@@ -170,22 +170,22 @@ public class OAuth {
    	*/
     private HttpRequest signRequest(HttpRequest req, List<OAuthParam> paramList, String signature) {
         OAuthParam param;
-        String authentication = 'OAuth ';
+        String Authorization = 'OAuth ';
         Integer params = 0;
         for(Integer i=0; i < paramList.size(); i++) {
             param = paramList[i];
             
             if(params == 0 && param.isOAuthData){
-                authentication += param.key + '= "' + param.value + '" ';
+                Authorization += param.key + '= "' + param.value + '" ';
                 params++;
             } else if(params <> 0 && param.isOAuthData){
-                authentication += ', ' + param.key + '= "' + param.value + '"';
+                Authorization += ', ' + param.key + '= "' + param.value + '"';
                 params++;
             }
         }
         
-		authentication += ', oauth_signature="' + signature + '"';
-		req.setHeader('Authentication', authentication);      
+		Authorization += ', oauth_signature="' + signature + '"';
+		req.setHeader('Authorization', Authorization);      
         return req;
     }
     
