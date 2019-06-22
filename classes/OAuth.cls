@@ -2,17 +2,19 @@
 * The OAuth file implements a class to sign easily
 * HttpRequests using OAuth 1.0 with HMAC-SHA1 as signature
 * method.
-* @author  Daniel Palacios Hidalgo
-* @version 1.0
-* @since   2019-06-03 
+* @author  		Daniel Palacios Hidalgo
+* @version 		1.0
+* @since    	2019-06-03 
+* @testClass 	OAuthTest
 */
 public class OAuth {
-    class OAuthParam implements Comparable {
-        public String key;
-        public String value;
-        public String encodedKey;
-        public String encodedValue;
-        public Boolean isOAuthData;
+    public class OAuthParam implements Comparable {
+        private String key;
+        private String value;
+        private String encodedKey;
+        private String encodedValue;
+        private Boolean isOAuthData;
+        
         public OAuthParam(String key, String value, Boolean oAuthData) {
             this.key = key;
             this.value = value;
@@ -27,6 +29,27 @@ public class OAuth {
             if (this.encodedKey == p.encodedKey) return 0;
             return -1;
     	}
+        
+        public string getKey() {
+            return key;
+        }
+        
+        public string getEncodedKey() {
+            return encodedKey;
+        }
+        
+        public string getValue() {
+            return value;
+        }
+        
+        public string getEncodedValue() {
+            return encodedValue;
+        }
+        
+        public boolean getIsOAuthData() {
+            return isOAuthData;
+        }
+        
     }
     
 	private String consumerKey;
@@ -57,7 +80,8 @@ public class OAuth {
 	* @param paramList list of OAuth parameters.
    	* @return String string to be concatenated.
    	*/
-    private String getParamString(List<OAuthParam> paramList) {
+    @testVisible
+    private static String getParamString(List<OAuthParam> paramList) {
         String paramString = '';
         paramList.sort();
         
@@ -78,7 +102,8 @@ public class OAuth {
 	*		 and sorted alphabetically by key [& value];
    	* @return String string to be signed.
    	*/
-    private String getBaseString(String method, String url, String paramString) {
+    @testVisible
+    private static String getBaseString(String method, String url, String paramString) {
         String baseString = '';
         
         baseString += method.toUpperCase() + '&';
@@ -96,14 +121,14 @@ public class OAuth {
 			 takes place.
    	* @return List<OAuthParam> param list.
    	*/
+    @testVisible
     private List<OAuthParam> getOAuthParamList(Url url, String nonce, String timestamp) {
         List<OAuthParam> paramList = new List<OAuthParam>();   
         
         // Get URL query params
         String urlQuery = url.getQuery();
         if(urlQuery <> null){
-            if(urlQuery.contains('?'))
-                urlQuery = urlQuery.remove('?');
+            if(urlQuery.contains('?')) urlQuery = urlQuery.remove('?');
             List<String> splittedQuery = urlQuery.split('&');
             String[] splittedParam;
             
@@ -121,6 +146,7 @@ public class OAuth {
         paramList.add(new OAuthParam('oauth_token', oAuthToken, true)); 
         paramList.add(new OAuthParam('oauth_version', oAuthVersion, true)); 
         
+        paramList.sort();
         return paramList;
     }
     
@@ -129,12 +155,12 @@ public class OAuth {
 	* @param url url to extract the endpoint from.
    	* @return String base url.
    	*/
+    @testVisible
     private string getBaseUrl(Url u) {
 		String stringUrl = u.toExternalForm();
         if(stringUrl.contains('?'))
             stringUrl = stringUrl.split('\\?')[0];
 		
-        System.debug(stringUrl);
         return stringUrl;
     }
     
@@ -145,6 +171,7 @@ public class OAuth {
 	* @param signingKey key to sign.
    	* @return String signature.
    	*/
+    @testVisible
     private string HMACSHA1(String input, String signingKey) {
 		Blob signature = Crypto.generateMac('HmacSHA1', Blob.ValueOf(input), Blob.ValueOf(signingKey));
 		return EncodingUtil.base64encode(signature);
@@ -155,6 +182,7 @@ public class OAuth {
 	* the consumer secret and the secret access token.
    	* @return String signing key.
    	*/
+    @testVisible
     private string generateSigningKey() {
         return EncodingUtil.urlEncode(consumerSecret, 'UTF-8') +'&'+ EncodingUtil.urlEncode(accessTokenSecret, 'UTF-8');
     }
@@ -170,22 +198,22 @@ public class OAuth {
    	*/
     private HttpRequest signRequest(HttpRequest req, List<OAuthParam> paramList, String signature) {
         OAuthParam param;
-        String Authorization = 'OAuth ';
+        String authorization = 'OAuth ';
         Integer params = 0;
         for(Integer i=0; i < paramList.size(); i++) {
             param = paramList[i];
             
             if(params == 0 && param.isOAuthData){
-                Authorization += param.key + '= "' + param.value + '" ';
+                authorization += param.key + '= "' + param.value + '"';
                 params++;
             } else if(params <> 0 && param.isOAuthData){
-                Authorization += ', ' + param.key + '= "' + param.value + '"';
+                authorization += ', ' + param.key + '= "' + param.value + '"';
                 params++;
             }
         }
         
-		Authorization += ', oauth_signature="' + signature + '"';
-		req.setHeader('Authorization', Authorization);      
+		authorization += ', oauth_signature="' + signature + '"';
+		req.setHeader('Authorization', authorization);      
         return req;
     }
     
@@ -198,8 +226,9 @@ public class OAuth {
         Url url = new Url(req.getEndpoint());
         String httpMethod = req.getMethod();
         
-        String nonce = String.valueOf(Crypto.getRandomLong());
-        String timestamp = String.valueOf(Datetime.now().getTime());
+        // Force non-random parameters for testing contexts.
+        String nonce = (Test.isRunningTest()) ? 'kYjzVBB8Y0ZFabxSWbWovY3uYSQ2pTgmZeNu2VS4cg' : String.valueOf(Crypto.getRandomLong());
+        String timestamp = (Test.isRunningTest()) ? '1318622958' : String.valueOf(Datetime.now().getTime());
 
         List<OAuthParam> paramList = getOAuthParamList(url, nonce, timestamp);
         String paramString = getParamString(paramList);
